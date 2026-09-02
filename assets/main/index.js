@@ -1066,7 +1066,7 @@ System.register("chunks:///_virtual/gameMachine.ts", ['./rollupPluginModLoBabelH
 });
 
 System.register("chunks:///_virtual/GameRoot.ts", ['./rollupPluginModLoBabelHelpers.js', 'cc', './app.ts', './adPolicy.ts', './economy.ts', './types2.ts', './profileStore.ts', './format.ts', './widgets.ts'], function (exports) {
-  var _inheritsLoose, _createForOfIteratorHelperLoose, _createClass, cclegacy, _decorator, view, ResolutionPolicy, Canvas, profiler, Tween, tween, Graphics, Color, Label, UIOpacity, UITransform, Node, Vec3, Widget, Sprite, Component, createApp, canShowInterstitial, markInterstitialShown, canShowRewarded, dateKey, SIGNIN_REWARDS, TOTAL_BOXES, BOX_AMOUNTS, ProfileStore, ENERGY_POTION_PRICE, SHIELD_PRICE, ITEM_REMOVE_LOW_PRICE, ITEM_PROTECT_HIGH_PRICE, formatAmount, DESIGN_W, DESIGN_H, COLORS, applyTheme, preloadSprites, makePanel, uiNode, makeSprite, makeLabel, makeSpriteButton, makeButton, makeRect, amountColor, makeTitle;
+  var _inheritsLoose, _createForOfIteratorHelperLoose, _createClass, cclegacy, _decorator, view, ResolutionPolicy, Canvas, profiler, Tween, tween, Graphics, Color, Label, UIOpacity, UITransform, Node, Vec3, Widget, Sprite, Component, createApp, canShowInterstitial, markInterstitialShown, canShowRewarded, SIGNIN_REWARDS, dateKey, TOTAL_BOXES, BOX_AMOUNTS, ProfileStore, ENERGY_POTION_PRICE, SHIELD_PRICE, ITEM_REMOVE_LOW_PRICE, ITEM_PROTECT_HIGH_PRICE, formatAmount, DESIGN_W, DESIGN_H, COLORS, applyTheme, preloadSprites, makePanel, uiNode, makeSprite, makeLabel, makeSpriteButton, makeButton, makeRect, amountColor, makeTitle;
   return {
     setters: [function (module) {
       _inheritsLoose = module.inheritsLoose;
@@ -1098,8 +1098,8 @@ System.register("chunks:///_virtual/GameRoot.ts", ['./rollupPluginModLoBabelHelp
       markInterstitialShown = module.markInterstitialShown;
       canShowRewarded = module.canShowRewarded;
     }, function (module) {
-      dateKey = module.dateKey;
       SIGNIN_REWARDS = module.SIGNIN_REWARDS;
+      dateKey = module.dateKey;
     }, function (module) {
       TOTAL_BOXES = module.TOTAL_BOXES;
       BOX_AMOUNTS = module.BOX_AMOUNTS;
@@ -1143,6 +1143,11 @@ System.register("chunks:///_virtual/GameRoot.ts", ['./rollupPluginModLoBabelHelp
 
       /** 银行家报价页切图（来自设计稿精灵图切片） */
       var OFFER_SPRITES = ['banker_crown', 'banker_phone', 'banker_title', 'banker_dollar', 'banker_label', 'banker_quote', 'banker_amount_bg', 'banker_timer_bg', 'banker_clock', 'banker_accept_btn', 'banker_continue_btn', 'banker_bottom_deco', 'banker_footer'];
+
+      /** 签到页用到的切图（scripts/slice-signin.js 从设计精灵图切出） */
+      var SIGNIN_SPRITES = ['signin_title'].concat([1, 2, 3, 4, 5, 6, 7].flatMap(function (i) {
+        return ["signin_pill" + i, "signin_icon" + i];
+      }), ['signin_btn_sign', 'signin_btn_done', 'signin_btn_ad', 'signin_btn_back', 'signin_stamp_claimed', 'signin_stamp_claimable', 'signin_coins_corner', 'signin_gems_coins']);
       var GameRoot = exports('GameRoot', (_dec = ccclass('GameRoot'), _dec(_class = /*#__PURE__*/function (_Component) {
         _inheritsLoose(GameRoot, _Component);
         function GameRoot() {
@@ -1271,7 +1276,7 @@ System.register("chunks:///_virtual/GameRoot.ts", ['./rollupPluginModLoBabelHelp
             });
 
             // 先预加载首页/开箱页切图，再建全部面板并进入首页
-            preloadSprites([].concat(HOME_SPRITES, PLAY_SPRITES, OFFER_SPRITES)).then(function () {
+            preloadSprites([].concat(HOME_SPRITES, PLAY_SPRITES, OFFER_SPRITES, SIGNIN_SPRITES)).then(function () {
               _this2.buildAllPanels();
               _this2.show('home');
               _this2.schedule(_this2.tickTimers, 0.5);
@@ -2843,46 +2848,85 @@ System.register("chunks:///_virtual/GameRoot.ts", ['./rollupPluginModLoBabelHelp
 
         _proto.buildSignin = function buildSignin() {
           var _this15 = this;
-          var p = makePanel('signin', this.node);
-          makeTitle('每日签到', p, 560, 52);
-          var days = makeLabel('', 32, COLORS.white, p);
-          days.node.setPosition(0, 330);
+          var p = makePanel('signin', this.node, false);
+          var vh = view.getVisibleSize().height;
+          var yAt = function yAt(fracTop) {
+            return vh * (0.5 - fracTop);
+          };
+
+          // 标题精灵 + 副标题
+          makeSprite('signin_title', p, 560).setPosition(0, yAt(0.078));
+          makeLabel('连续签到 7 天循环奖励', 28, COLORS.gold, p).node.setPosition(0, yAt(0.166));
+
+          // 7 行奖励：胶囊底 + 天数胶囊 + 奖励图标 + 金额 + 状态（印章/待签到）
+          var ROW_W = 664;
+          var ROW_H = 68;
+          var rowNodes = [];
+          for (var i = 0; i < 7; i++) {
+            var y = yAt(0.216) - i * 76;
+            var row = uiNode("signinRow" + i, p);
+            row.getComponent(UITransform).setContentSize(ROW_W, ROW_H);
+            var g = row.addComponent(Graphics);
+            var isLast = i === 6;
+            g.fillColor = isLast ? new Color(104, 26, 46, 205) : new Color(44, 24, 76, 190);
+            g.roundRect(-ROW_W / 2, -ROW_H / 2, ROW_W, ROW_H, ROW_H / 2);
+            g.fill();
+            g.lineWidth = isLast ? 3 : 2;
+            g.strokeColor = isLast ? new Color(255, 201, 60, 230) : new Color(255, 201, 60, 64);
+            g.roundRect(-ROW_W / 2, -ROW_H / 2, ROW_W, ROW_H, ROW_H / 2);
+            g.stroke();
+            row.setPosition(0, y);
+            makeSprite("signin_pill" + (i + 1), row, isLast ? 132 : 116).setPosition(-248, 0);
+            makeSprite("signin_icon" + (i + 1), row, isLast ? 98 : 86).setPosition(-116, isLast ? -2 : 0);
+            makeLabel(formatAmount(SIGNIN_REWARDS[i]), isLast ? 40 : 34, isLast ? COLORS.gold : COLORS.white, row).node.setPosition(isLast ? 46 : 70, 0);
+            var claimed = makeSprite('signin_stamp_claimed', row, 84);
+            claimed.setPosition(240, 0);
+            var claimable = makeSprite('signin_stamp_claimable', row, 84);
+            claimable.setPosition(240, 0);
+            var pending = makeLabel('待签到', 24, COLORS.sub, row);
+            pending.node.setPosition(242, 0);
+            rowNodes.push({
+              claimed: claimed,
+              claimable: claimable,
+              pending: pending
+            });
+          }
           var state = makeLabel('', 26, COLORS.sub, p);
-          state.node.setPosition(0, 158);
-          var signBtn = makeButton('立即签到', function () {
+          state.node.setPosition(0, yAt(0.622));
+          var signBtn = makeSpriteButton('signin_btn_sign', function () {
             return _this15.onSignin();
-          }, p, {
-            w: 340,
-            h: 96,
-            fontSize: 36
-          });
-          signBtn.setPosition(0, 30);
-          var doubleBtn = makeButton('看广告 · 今日 +50%', function () {
+          }, p, 430);
+          signBtn.setPosition(0, yAt(0.682));
+          var doneBtn = makeSprite('signin_btn_done', p, 430);
+          doneBtn.setPosition(0, yAt(0.682));
+          var doubleBtn = makeSpriteButton('signin_btn_ad', function () {
             return _this15.onSigninDouble();
-          }, p, {
-            w: 340,
-            h: 76,
-            fontSize: 26
-          });
-          doubleBtn.setPosition(0, -100);
-          makeButton('返回', function () {
+          }, p, 500);
+          doubleBtn.setPosition(0, yAt(0.76));
+          makeSpriteButton('signin_btn_back', function () {
             return _this15.show('home');
-          }, p, {
-            w: 240,
-            bg: COLORS.nav,
-            fg: COLORS.white
-          }).setPosition(0, -330);
+          }, p, 250).setPosition(0, yAt(0.888));
+
+          // 底部装饰：左宝石堆 / 右金币堆
+          makeSprite('signin_gems_coins', p, 210).setPosition(-252, yAt(0.952));
+          makeSprite('signin_coins_corner', p, 300).setPosition(248, yAt(0.946));
           this.panels.set('signin', {
             root: p,
             refresh: function refresh() {
               var st = _this15.app.wallet.signinState;
               var today = dateKey(Date.now());
               var signedToday = st.lastSigninDate === today;
-              days.string = SIGNIN_REWARDS.map(function (v, i) {
-                return "\u7B2C" + (i + 1) + "\u5929 " + formatAmount(v);
-              }).join('\n');
+              // 循环周期内：已领到第 lastClaimed 天，未签到时下一天可领
+              var lastClaimed = st.streakDays > 0 ? (st.streakDays - 1) % 7 : -1;
+              var claimableIdx = signedToday ? -1 : (lastClaimed + 1) % 7;
+              rowNodes.forEach(function (r, i) {
+                r.claimed.active = i <= lastClaimed;
+                r.claimable.active = i === claimableIdx;
+                r.pending.node.active = i > lastClaimed && i !== claimableIdx;
+              });
               state.string = signedToday ? "\u5DF2\u8FDE\u7EED\u7B7E\u5230 " + st.streakDays + " \u5929\uFF0C\u660E\u5929\u7EE7\u7EED\uFF01" : '签到领金币，连续 7 天循环奖励';
               signBtn.active = !signedToday;
+              doneBtn.active = signedToday;
               doubleBtn.active = _this15.profile.adsEnabled && signedToday && _this15.signinBase > 0 && canShowRewarded(_this15.profile.ads, 'signin_double');
             }
           });

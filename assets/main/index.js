@@ -1273,8 +1273,8 @@ System.register("chunks:///_virtual/GameRoot.ts", ['./rollupPluginModLoBabelHelp
               return _this2.onGameEvent(e);
             });
 
-            // 先预加载首页/开箱页切图，再建全部面板并进入首页
-            preloadSprites([].concat(HOME_SPRITES, PLAY_SPRITES, OFFER_SPRITES, SIGNIN_SPRITES)).then(function () {
+            // 只预载首页切图即进首页，其余页面切图后台补载（makeSprite 未命中缓存时会自行加载）
+            preloadSprites(HOME_SPRITES).then(function () {
               _this2.buildAllPanels();
               _this2.show('home');
               _this2.schedule(_this2.tickTimers, 0.5);
@@ -1284,6 +1284,7 @@ System.register("chunks:///_virtual/GameRoot.ts", ['./rollupPluginModLoBabelHelp
                 profile: _this2.profile,
                 root: _this2
               };
+              preloadSprites([].concat(PLAY_SPRITES, OFFER_SPRITES, SIGNIN_SPRITES));
             });
           } catch (e) {
             var _stack;
